@@ -115,11 +115,22 @@
       </div>
     </div>
 
-    <div style="background:white;border-radius:10px;padding:1rem;border:1px solid #eee;margin-bottom:1rem;display:flex;align-items:center;gap:12px;">
-      <div style="font-size:28px;">🏗️</div>
-      <div>
-        <div style="font-size:12px;color:#888;">Project started April 15, 2026</div>
-        <div id="project-timer" style="font-size:18px;font-weight:600;color:#1a1a1a;">--</div>
+    <div style="background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">🏗️</div>
+        <div>
+          <div style="font-size:12px;color:#888;" id="start-date-label">Project started <span id="start-date-display">--</span></div>
+          <div id="project-timer" style="font-size:18px;font-weight:600;color:#0D1B2A;">--</div>
+        </div>
+      </div>
+      <button onclick="showDatePicker()" style="font-size:12px;padding:6px 12px;border:1px solid #E2E8F0;border-radius:6px;background:white;color:#0D1B2A;cursor:pointer;font-weight:500;white-space:nowrap;">📅 Set Start Date</button>
+    </div>
+    <div id="date-picker-wrap" style="display:none;background:white;border-radius:10px;padding:1rem;border:1px solid #E2E8F0;margin-bottom:1rem;">
+      <div style="font-size:13px;font-weight:500;color:#0D1B2A;margin-bottom:8px;">Set Project Start Date</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="start-date-input" style="flex:1;padding:8px 12px;border:1px solid #E2E8F0;border-radius:6px;font-size:14px;font-family:inherit;outline:none;">
+        <button onclick="saveStartDate()" style="padding:8px 16px;background:#0D1B2A;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('date-picker-wrap').style.display='none'" style="padding:8px 12px;border:1px solid #E2E8F0;border-radius:6px;background:white;font-size:13px;cursor:pointer;">Cancel</button>
       </div>
     </div>
 
@@ -337,6 +348,34 @@
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), 'Receipts');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Category', 'Total'], ...Object.entries(cats)]), 'By Category');
       XLSX.writeFile(wb, 'renovation-receipts.xlsx');
+    }
+
+    function showDatePicker() {
+      const wrap = document.getElementById('date-picker-wrap');
+      wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function saveStartDate() {
+      const input = document.getElementById('start-date-input').value;
+      if (!input) return;
+      try {
+        await window.storage.set('project_start_date', input);
+      } catch(e) {}
+      document.getElementById('date-picker-wrap').style.display = 'none';
+      loadStartDate();
+    }
+
+    async function loadStartDate() {
+      let dateStr = '2026-07-28';
+      try {
+        const r = await window.storage.get('project_start_date');
+        if (r && r.value) dateStr = r.value;
+      } catch(e) {}
+      const d = new Date(dateStr);
+      const formatted = d.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+      document.getElementById('start-date-display').textContent = formatted;
+      document.getElementById('start-date-input').value = dateStr;
+      window._projectStartDate = dateStr;
     }
 
     function updateTimer() {
@@ -692,8 +731,7 @@
       if (input === '12345') {
         document.getElementById('lock-screen').style.display = 'none';
         document.getElementById('main-content').style.display = 'block';
-        updateTimer();
-        setInterval(updateTimer, 1000);
+        loadStartDate().then(() => { updateTimer(); setInterval(updateTimer, 1000); });
         loadData();
       } else {
         document.getElementById('pwd-error').style.display = 'block';
